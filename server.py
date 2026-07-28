@@ -30,10 +30,12 @@ def audio():
     url = f"https://www.youtube.com/watch?v={video_id}"
 
     try:
+        # Extrair informações do vídeo
         ydl_opts = {
             "quiet": True,
             "noplaylist": True,
             "cookiefile": COOKIE_FILE,
+            "format": "bestaudio/best",
             "extractor_args": {
                 "youtube": {
                     "player_client": ["android"]
@@ -44,6 +46,7 @@ def audio():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
+        # Pegar URL direta do áudio
         result = subprocess.run(
             [
                 "yt-dlp",
@@ -52,7 +55,7 @@ def audio():
                 "--extractor-args",
                 "youtube:player_client=android",
                 "-f",
-                "140",
+                "bestaudio/best",
                 "-g",
                 url
             ],
@@ -67,6 +70,12 @@ def audio():
             }), 500
 
         audio_url = result.stdout.strip()
+
+        if not audio_url:
+            return jsonify({
+                "success": False,
+                "error": "Não encontrou URL de áudio"
+            }), 500
 
         return jsonify({
             "success": True,
