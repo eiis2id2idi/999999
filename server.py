@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 import yt_dlp
-import subprocess
 import os
 
 app = Flask(__name__)
@@ -30,51 +29,45 @@ def audio():
     url = f"https://www.youtube.com/watch?v={video_id}"
 
     try:
-        # Extrair informações do vídeo
         ydl_opts = {
             "quiet": True,
             "noplaylist": True,
             "cookiefile": COOKIE_FILE,
-            "format": "bestaudio/best",
+
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android"]
+                    "player_client": [
+                        "android"
+                    ]
                 }
             }
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+            info = ydl.extract_info(
+                url,
+                download=False
+            )
 
-        # Pegar URL direta do áudio
-        result = subprocess.run(
-            [
-                "yt-dlp",
-                "--cookies",
-                COOKIE_FILE,
-                "--extractor-args",
-                "youtube:player_client=android",
-                "-f",
-                "bestaudio/best",
-                "-g",
-                url
-            ],
-            capture_output=True,
-            text=True
-        )
+        audio_url = None
 
-        if result.returncode != 0:
-            return jsonify({
-                "success": False,
-                "error": result.stderr
-            }), 500
+        # Procura qualquer formato somente com áudio
+        for fmt in info.get("formats", []):
+            acodec = fmt.get("acodec")
 
-        audio_url = result.stdout.strip()
+            if (
+                acodec
+                and acodec != "none"
+                and fmt.get("url")
+            ):
+                audio_url = fmt["url"]
+                break
 
         if not audio_url:
             return jsonify({
                 "success": False,
-                "error": "Não encontrou URL de áudio"
+                "error": "Nenhum áudio encontrado",
+                "formats": len(info.get("formats", []))
             }), 500
 
         return jsonify({
