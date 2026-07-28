@@ -1,15 +1,19 @@
 from flask import Flask, request, jsonify
-import subprocess
 import yt_dlp
+import subprocess
+import os
 
 app = Flask(__name__)
+
+COOKIE_FILE = "cookies.txt"
 
 
 @app.route("/")
 def home():
     return jsonify({
         "success": True,
-        "service": "YouTube Audio API"
+        "service": "YouTube Audio API",
+        "cookies": os.path.exists(COOKIE_FILE)
     })
 
 
@@ -26,19 +30,27 @@ def audio():
     url = f"https://www.youtube.com/watch?v={video_id}"
 
     try:
-        # Pega informações do vídeo
         ydl_opts = {
             "quiet": True,
-            "noplaylist": True
+            "noplaylist": True,
+            "cookiefile": COOKIE_FILE,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android"]
+                }
+            }
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
-        # Pega somente áudio m4a (itag 140)
         result = subprocess.run(
             [
                 "yt-dlp",
+                "--cookies",
+                COOKIE_FILE,
+                "--extractor-args",
+                "youtube:player_client=android",
                 "-f",
                 "140",
                 "-g",
@@ -75,4 +87,4 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=5000
-      )
+    )
